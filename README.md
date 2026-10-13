@@ -1,5 +1,7 @@
 # Deploy and Host DeerFlow with Railway
 
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/deerflow-v2-deep-research-super-agent?referralCode=20H68q)
+
 DeerFlow is ByteDance's open-source (MIT) super-agent harness: give it a goal and a lead agent plans, searches the web, reads sources, delegates to sub-agents and delivers a cited report or other files. This community template runs DeerFlow v2.1.0 on Railway behind one HTTPS URL, with login, Postgres and Redis.
 
 ## About Hosting DeerFlow
