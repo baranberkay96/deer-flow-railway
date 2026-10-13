@@ -1,0 +1,149 @@
+# DeerFlow config.yaml base for Railway (DeerFlow v2.1.0, config_version 45).
+#
+# render_config.py loads this file at every start and fills in the parts that
+# depend on Railway variables: `models` (one entry per provider key that is
+# set), `sandbox` (local or E2B), the web_search provider, auth/feature flags
+# and the persistence backends. Secrets stay as $VAR references; DeerFlow
+# resolves them from the environment.
+#
+# Adapted from bytedance/deer-flow v2.1.0 config.example.yaml and
+# deploy/helm/deer-flow/values.yaml (MIT).
+#
+# To run a fully custom config instead, set DEERFLOW_CONFIG_YAML on the Gateway
+# service to the complete YAML document; it is then written verbatim.
+
+config_version: 45
+log_level: info
+
+token_usage:
+  enabled: true
+
+recursion_limit: 100
+max_recursion_limit: 1000
+
+models: []
+
+tool_groups:
+  - name: web
+  - name: file:read
+  - name: file:write
+  - name: bash
+
+tools:
+  - name: web_search
+    group: web
+    use: deerflow.community.ddg_search.tools:web_search_tool
+    max_results: 5
+  - name: web_fetch
+    group: web
+    use: deerflow.community.jina_ai.tools:web_fetch_tool
+    timeout: 10
+  - name: image_search
+    group: web
+    use: deerflow.community.image_search.tools:image_search_tool
+    max_results: 5
+  - name: ls
+    group: file:read
+    use: deerflow.sandbox.tools:ls_tool
+  - name: read_file
+    group: file:read
+    use: deerflow.sandbox.tools:read_file_tool
+  - name: glob
+    group: file:read
+    use: deerflow.sandbox.tools:glob_tool
+    max_results: 200
+  - name: grep
+    group: file:read
+    use: deerflow.sandbox.tools:grep_tool
+    max_results: 100
+  - name: write_file
+    group: file:write
+    use: deerflow.sandbox.tools:write_file_tool
+  - name: str_replace
+    group: file:write
+    use: deerflow.sandbox.tools:str_replace_tool
+  # Filtered out automatically while the local sandbox is active (host bash is
+  # disabled); becomes available when E2B_API_KEY switches the sandbox to E2B.
+  - name: bash
+    group: bash
+    use: deerflow.sandbox.tools:bash_tool
+
+uploads:
+  max_files: 10
+  max_file_size: 52428800    # 50 MiB
+  max_total_size: 104857600  # 100 MiB
+  auto_convert_documents: false
+  pdf_converter: auto
+
+skills:
+  container_path: /mnt/skills
+
+memory:
+  enabled: true
+  injection_enabled: true
+  shutdown_flush_timeout_seconds: 30.0
+
+title:
+  enabled: true
+  max_words: 6
+  max_chars: 60
+  model_name: null
+
+summarization:
+  enabled: true
+
+agents_api:
+  enabled: true
+
+skill_evolution:
+  enabled: false
+  moderation_model_name: null
+  security_fail_closed: true
+
+# Persistence (Postgres + Redis) is filled in by render_config.py.
+database:
+  backend: postgres
+  postgres_url: $DATABASE_URL
+  pool_recycle: 300
+  command_timeout: 30
+
+# The LangGraph Store follows the legacy `checkpointer` section when present;
+# point it at the same Postgres (as upstream's Helm chart does).
+checkpointer:
+  type: postgres
+  connection_string: $DATABASE_URL
+
+run_events:
+  backend: db
+  max_trace_content: 10240
+  track_token_usage: true
+
+agent_storage:
+  backend: db
+
+stream_bridge:
+  type: redis
+
+scheduler:
+  enabled: true
+  multi_instance: false
+  poll_interval_seconds: 5
+  lease_seconds: 120
+  max_concurrent_runs: 3
+  queue_timeout_seconds: 3600
+  min_once_delay_seconds: 60
+  recursion_limit: 1000
+
+run_ownership:
+  lease_seconds: 30
+  grace_seconds: 10
+  heartbeat_enabled: false
+
+auth:
+  local:
+    allow_registration: false
+    max_login_attempts: 5
+    lockout_seconds: 300
+
+authorization:
+  enabled: false

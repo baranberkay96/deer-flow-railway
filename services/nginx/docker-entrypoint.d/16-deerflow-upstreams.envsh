@@ -1,0 +1,16 @@
+#!/bin/sh
+# Sourced by the nginx entrypoint before envsubst renders the templates.
+# A Railway reference such as ${{Gateway.RAILWAY_PRIVATE_DOMAIN}}:8001 renders
+# as ":8001" if the referenced service was renamed or removed; fall back to the
+# template's default private hostnames instead of producing "http://:8001".
+case "${DEERFLOW_GATEWAY_UPSTREAM:-}" in
+  ""|:*) export DEERFLOW_GATEWAY_UPSTREAM="gateway.railway.internal:8001" ;;
+esac
+case "${DEERFLOW_FRONTEND_UPSTREAM:-}" in
+  ""|:*) export DEERFLOW_FRONTEND_UPSTREAM="frontend.railway.internal:3000" ;;
+esac
+case "${DEERFLOW_ALLOW_PUBLIC_SETUP:-}" in
+  true|TRUE|True|1|yes) export DEERFLOW_ALLOW_PUBLIC_SETUP=true ;;
+  *) export DEERFLOW_ALLOW_PUBLIC_SETUP=false ;;
+esac
+echo "deerflow: gateway=${DEERFLOW_GATEWAY_UPSTREAM} frontend=${DEERFLOW_FRONTEND_UPSTREAM} public_setup=${DEERFLOW_ALLOW_PUBLIC_SETUP}"

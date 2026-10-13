@@ -1,0 +1,431 @@
+{
+  "name": "DeerFlow v2 Deep Research Super Agent",
+  "description": "ByteDance's open-source agent that researches the web and writes reports.",
+  "category": "AI/ML",
+  "tags": [
+    "deerflow",
+    "deer-flow",
+    "ai-agent",
+    "deep-research",
+    "langgraph",
+    "llm",
+    "research",
+    "agents"
+  ],
+  "image": "https://cdn.jsdelivr.net/gh/bytedance/deer-flow@v2.1.0/frontend/public/images/deer.svg",
+  "upstream": {
+    "repo": "bytedance/deer-flow",
+    "version": "v2.1.0 (released 2026-09-24)",
+    "checked": "2026-10-13"
+  },
+  "services": {
+    "Nginx": {
+      "icon": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx.svg",
+      "source": {
+        "repo": "baranberkay96/deer-flow-railway",
+        "rootDirectory": "/services/nginx"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": "/healthz",
+      "healthcheckTimeout": 60,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": true,
+      "targetPort": 2026,
+      "tcpProxy": null,
+      "volume": null,
+      "variables": {
+        "PORT": {
+          "defaultValue": "2026",
+          "description": "Port nginx listens on; the public domain targets it.",
+          "required": false
+        },
+        "DEERFLOW_GATEWAY_UPSTREAM": {
+          "defaultValue": "${{Gateway.RAILWAY_PRIVATE_DOMAIN}}:8001",
+          "description": "Gateway private address (/api/*, /health, API docs).",
+          "required": false
+        },
+        "DEERFLOW_FRONTEND_UPSTREAM": {
+          "defaultValue": "${{Frontend.RAILWAY_PRIVATE_DOMAIN}}:3000",
+          "description": "Frontend private address (everything else).",
+          "required": false
+        },
+        "DEERFLOW_ALLOW_PUBLIC_SETUP": {
+          "defaultValue": "false",
+          "description": "true re-opens the browser /setup page; keep false, the Gateway creates the admin itself.",
+          "required": false
+        }
+      }
+    },
+    "Frontend": {
+      "icon": "https://cdn.jsdelivr.net/gh/bytedance/deer-flow@v2.1.0/frontend/public/images/deer.svg",
+      "source": {
+        "image": "ghcr.io/bytedance/deer-flow-frontend:v2.1.0"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": "/",
+      "healthcheckTimeout": 300,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": null,
+      "variables": {
+        "PORT": {
+          "defaultValue": "3000",
+          "description": "Next.js listen port (Railway health-checks this port).",
+          "required": false
+        },
+        "NODE_ENV": {
+          "defaultValue": "production",
+          "description": "Node environment.",
+          "required": false
+        },
+        "DEER_FLOW_INTERNAL_GATEWAY_BASE_URL": {
+          "defaultValue": "http://${{Gateway.RAILWAY_PRIVATE_DOMAIN}}:8001",
+          "description": "Gateway URL used by server-side rendering for auth checks (private network).",
+          "required": false
+        },
+        "DEER_FLOW_TRUSTED_ORIGINS": {
+          "defaultValue": "https://${{Nginx.RAILWAY_PUBLIC_DOMAIN}}",
+          "description": "Public browser origin (update when you add a custom domain).",
+          "required": false
+        },
+        "BETTER_AUTH_SECRET": {
+          "defaultValue": "${{secret(48, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\")}}",
+          "description": "Frontend session secret required by upstream compose (32+ characters).",
+          "required": false
+        },
+        "NEXT_TELEMETRY_DISABLED": {
+          "defaultValue": "1",
+          "description": "Disable Next.js telemetry.",
+          "required": false
+        }
+      }
+    },
+    "Gateway": {
+      "icon": "https://cdn.jsdelivr.net/gh/bytedance/deer-flow@v2.1.0/frontend/public/images/deer.svg",
+      "source": {
+        "repo": "baranberkay96/deer-flow-railway",
+        "rootDirectory": "/services/gateway"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": "/health/ready",
+      "healthcheckTimeout": 1200,
+      "restartPolicyType": "ALWAYS",
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": {
+        "mountPath": "/app/backend/.deer-flow"
+      },
+      "variables": {
+        "PORT": {
+          "defaultValue": "8001",
+          "description": "Gateway (FastAPI) listen port; Railway health-checks this port.",
+          "required": false
+        },
+        "DATABASE_URL": {
+          "defaultValue": "${{Postgres.DATABASE_URL}}",
+          "description": "Postgres for users, threads, checkpoints, run events, custom agents and scheduled tasks.",
+          "required": false
+        },
+        "DEER_FLOW_STREAM_BRIDGE_REDIS_URL": {
+          "defaultValue": "${{Redis.REDIS_URL}}/0",
+          "description": "Redis Streams bridge for live run events (SSE resume/replay).",
+          "required": false
+        },
+        "AUTH_JWT_SECRET": {
+          "defaultValue": "${{secret(64, \"abcdef0123456789\")}}",
+          "description": "Signs session tokens. Changing it signs everyone out.",
+          "required": false
+        },
+        "DEER_FLOW_INTERNAL_AUTH_TOKEN": {
+          "defaultValue": "${{secret(48, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\")}}",
+          "description": "Internal token for Gateway self-calls (IM channels, scheduler).",
+          "required": false
+        },
+        "DEERFLOW_ADMIN_EMAIL": {
+          "defaultValue": "admin@example.com",
+          "description": "Login email of the admin account created on first boot. Change before deploying if you like.",
+          "required": false
+        },
+        "DEERFLOW_ADMIN_PASSWORD": {
+          "defaultValue": "${{secret(24, \"abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789\")}}",
+          "description": "Password of that admin account (generated). Read it here to sign in.",
+          "required": false
+        },
+        "DEER_FLOW_ENV": {
+          "defaultValue": "production",
+          "description": "Production mode: refuses the DEER_FLOW_AUTH_DISABLED bypass.",
+          "required": false
+        },
+        "GATEWAY_ENABLE_DOCS": {
+          "defaultValue": "false",
+          "description": "true exposes Swagger/ReDoc at /docs and /redoc.",
+          "required": false
+        },
+        "GATEWAY_CORS_ORIGINS": {
+          "defaultValue": "https://${{Nginx.RAILWAY_PUBLIC_DOMAIN}}",
+          "description": "Allowed browser origin for auth/CSRF checks (add custom domains, comma-separated).",
+          "required": false
+        },
+        "AUTH_TRUSTED_PROXIES": {
+          "defaultValue": "10.0.0.0/8,100.64.0.0/10,172.16.0.0/12,192.168.0.0/16,fc00::/7,::ffff:10.0.0.0/104,::ffff:100.64.0.0/106,::ffff:172.16.0.0/108,::ffff:192.168.0.0/112",
+          "description": "Private ranges (plain and IPv4-mapped) whose X-Real-IP is trusted, i.e. the Nginx service, for the per-IP login lockout.",
+          "required": false
+        },
+        "GATEWAY_WORKERS": {
+          "defaultValue": "1",
+          "description": "Uvicorn workers. Keep 1 (upstream default; run control is in-process). >1 falls back to an IPv4-only listener.",
+          "required": false
+        },
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+          "defaultValue": "90",
+          "description": "Shutdown grace so the memory queue flush (30 s) finishes on redeploy.",
+          "required": false
+        },
+        "DEERFLOW_ALLOW_REGISTRATION": {
+          "defaultValue": "false",
+          "description": "true lets anyone with the URL create an account and spend your model credits.",
+          "required": false
+        },
+        "DEERFLOW_AGENTS_API": {
+          "defaultValue": "true",
+          "description": "Custom-agent management in the UI (auth is enforced).",
+          "required": false
+        },
+        "DEERFLOW_SCHEDULER": {
+          "defaultValue": "true",
+          "description": "Background scheduler for scheduled agent runs.",
+          "required": false
+        },
+        "DEERFLOW_LOG_LEVEL": {
+          "defaultValue": "info",
+          "description": "DeerFlow log level (debug, info, warning, error).",
+          "required": false
+        },
+        "ANTHROPIC_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. Anthropic key; adds Claude models (ANTHROPIC_MODEL).",
+          "required": false
+        },
+        "ANTHROPIC_MODEL": {
+          "defaultValue": "claude-opus-5-5",
+          "description": "Claude model id(s), comma-separated. Used only when ANTHROPIC_API_KEY is set.",
+          "required": false
+        },
+        "OPENAI_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. OpenAI (or OpenAI-compatible) key; adds OPENAI_MODEL.",
+          "required": false
+        },
+        "OPENAI_MODEL": {
+          "defaultValue": "gpt-5",
+          "description": "OpenAI model id(s), comma-separated. Used only when OPENAI_API_KEY is set.",
+          "required": false
+        },
+        "DEERFLOW_OPENAI_BASE_URL": {
+          "defaultValue": "",
+          "description": "Optional. Base URL of an OpenAI-compatible API (vLLM, Groq, Together, ...); empty = OpenAI.",
+          "required": false
+        },
+        "GEMINI_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. Google AI Studio key; adds GEMINI_MODEL.",
+          "required": false
+        },
+        "GEMINI_MODEL": {
+          "defaultValue": "gemini-2.5-pro",
+          "description": "Gemini model id(s), comma-separated. Used only when GEMINI_API_KEY is set.",
+          "required": false
+        },
+        "DEEPSEEK_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. DeepSeek key; adds DEEPSEEK_MODEL.",
+          "required": false
+        },
+        "DEEPSEEK_MODEL": {
+          "defaultValue": "deepseek-v4-pro",
+          "description": "DeepSeek model id(s), comma-separated. Used only when DEEPSEEK_API_KEY is set.",
+          "required": false
+        },
+        "OPENROUTER_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. OpenRouter key; adds OPENROUTER_MODEL.",
+          "required": false
+        },
+        "OPENROUTER_MODEL": {
+          "defaultValue": "openai/gpt-5",
+          "description": "OpenRouter model id(s), comma-separated. Used only when OPENROUTER_API_KEY is set.",
+          "required": false
+        },
+        "DEERFLOW_DEFAULT_MODEL": {
+          "defaultValue": "",
+          "description": "Optional. Model id to list first (default model). Empty = first configured provider.",
+          "required": false
+        },
+        "TAVILY_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. Tavily key; replaces keyless DuckDuckGo web search.",
+          "required": false
+        },
+        "JINA_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. Jina Reader key; raises the web_fetch rate limit.",
+          "required": false
+        },
+        "E2B_API_KEY": {
+          "defaultValue": "",
+          "description": "Optional. E2B key; enables bash/code execution in E2B cloud sandboxes (off without it).",
+          "required": false
+        }
+      }
+    },
+    "Postgres": {
+      "icon": "https://devicons.railway.app/i/postgresql.svg",
+      "source": {
+        "image": "ghcr.io/railwayapp-templates/postgres-ssl:18"
+      },
+      "startCommand": null,
+      "preDeployCommand": null,
+      "healthcheckPath": null,
+      "healthcheckTimeout": null,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": {
+        "mountPath": "/var/lib/postgresql/data"
+      },
+      "variables": {
+        "PGDATA": {
+          "defaultValue": "/var/lib/postgresql/data/pgdata",
+          "description": "Location where the database will be initialized",
+          "required": false
+        },
+        "PGHOST": {
+          "defaultValue": "${{RAILWAY_PRIVATE_DOMAIN}}",
+          "description": "Railway Private Domain Name.",
+          "required": false
+        },
+        "PGPORT": {
+          "defaultValue": "5432",
+          "description": "Port to connect to Postgres.",
+          "required": false
+        },
+        "PGUSER": {
+          "defaultValue": "${{ POSTGRES_USER }}",
+          "description": "Required variable for Data panel",
+          "required": false
+        },
+        "PGDATABASE": {
+          "defaultValue": "${{POSTGRES_DB}}",
+          "description": "Required variable for the data panel.",
+          "required": false
+        },
+        "PGPASSWORD": {
+          "defaultValue": "${{POSTGRES_PASSWORD}}",
+          "description": "Required variable for Data panel",
+          "required": false
+        },
+        "POSTGRES_DB": {
+          "defaultValue": "railway",
+          "description": "Default database created when image is started.",
+          "required": false
+        },
+        "DATABASE_URL": {
+          "defaultValue": "postgresql://${{PGUSER}}:${{POSTGRES_PASSWORD}}@${{RAILWAY_PRIVATE_DOMAIN}}:5432/${{PGDATABASE}}",
+          "description": "URL to connect to Postgres database.",
+          "required": false
+        },
+        "POSTGRES_USER": {
+          "defaultValue": "postgres",
+          "description": "User to connect to Postgres DB",
+          "required": false
+        },
+        "SSL_CERT_DAYS": {
+          "defaultValue": "820",
+          "description": "SSL certificate expiry in days.",
+          "required": false
+        },
+        "POSTGRES_PASSWORD": {
+          "defaultValue": "${{ secret(32, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\") }}",
+          "description": "Password to connect to DB",
+          "required": false
+        },
+        "RAILWAY_DEPLOYMENT_DRAINING_SECONDS": {
+          "defaultValue": "60",
+          "description": "Allow Postgres to cleanly shut down",
+          "required": false
+        }
+      }
+    },
+    "Redis": {
+      "icon": "https://cdn.sanity.io/images/sy1jschh/production/0ce0bfdcfbdbf69662b1116671f97c2dd788b655-157x157.svg",
+      "source": {
+        "image": "redis:8.2"
+      },
+      "startCommand": "/bin/sh -c \"rm -rf $RAILWAY_VOLUME_MOUNT_PATH/lost+found/ && exec docker-entrypoint.sh redis-server --requirepass $REDIS_PASSWORD --save 60 1 --dir $RAILWAY_VOLUME_MOUNT_PATH\"",
+      "preDeployCommand": null,
+      "healthcheckPath": null,
+      "healthcheckTimeout": null,
+      "restartPolicyType": "ON_FAILURE",
+      "restartPolicyMaxRetries": 10,
+      "numReplicas": 1,
+      "cronSchedule": null,
+      "publicDomain": false,
+      "targetPort": null,
+      "tcpProxy": null,
+      "volume": {
+        "mountPath": "/data"
+      },
+      "variables": {
+        "REDISHOST": {
+          "defaultValue": "${{RAILWAY_PRIVATE_DOMAIN}}",
+          "description": "Private network hostname of the Redis service, only resolvable from services in the same environment",
+          "required": false
+        },
+        "REDISPORT": {
+          "defaultValue": "6379",
+          "description": "Port that Redis listens on",
+          "required": false
+        },
+        "REDISUSER": {
+          "defaultValue": "default",
+          "description": "Username for authenticating with Redis",
+          "required": false
+        },
+        "REDIS_URL": {
+          "defaultValue": "redis://${{ REDISUSER }}:${{ REDIS_PASSWORD }}@${{ REDISHOST }}:${{ REDISPORT }}",
+          "description": "Connection string for connecting to Redis using the private network",
+          "required": false
+        },
+        "REDISPASSWORD": {
+          "defaultValue": "${{REDIS_PASSWORD}}",
+          "description": "Alias of REDIS_PASSWORD for clients that expect the unseparated name",
+          "required": false
+        },
+        "REDIS_PASSWORD": {
+          "defaultValue": "${{ secret(32, \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ\") }}",
+          "description": "Randomly generated password for authenticating with Redis",
+          "required": false
+        }
+      }
+    }
+  },
+  "buckets": []
+}
